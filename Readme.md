@@ -5,7 +5,7 @@
 ### Date Preparation
 
 - Download the `something-something` database provided in the paper [The "something something" video database for learning and evaluating visual common sense](https://arxiv.org/pdf/1706.04261.pdf).
-- If network permission allowed,  you can also download the dataset on the [Baidu Netdisk]()
+- If network permission allowed,  you can also download the dataset on the [Baidu Netdisk](https://pan.baidu.com/s/1av0kmZUWXbWq9X5woBtcPA?pwd=xgc6)
 
 ### Training & Testing 
 
