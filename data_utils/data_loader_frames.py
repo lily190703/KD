@@ -124,6 +124,7 @@ class VideoFolder(torch.utils.data.Dataset):
         Choose and Load frames per video
         :param index:  the index of video
         """
+
         folder_id = str(int(self.vid_names[index]))
         # print(folder_id)
         video_data = self.box_annotations[folder_id]     # self.box_annotations['151201']
@@ -144,6 +145,11 @@ class VideoFolder(torch.utils.data.Dataset):
                 object_set.add(standard_category)
         object_set = sorted(list(object_set))
 
+        if 'hand' in object_set:
+            hand_id = torch.tensor(object_set.index('hand'))
+        else:
+            hand_id = torch.tensor(5)
+
         frames = []
         for fidx in coord_frame_list:
             image_path = videodata_path + '%d' % fidx + '.jpg'
@@ -155,6 +161,7 @@ class VideoFolder(torch.utils.data.Dataset):
         frames_resize = [img.resize((self.pre_resize_shape[1], self.pre_resize_shape[0]), Image.BILINEAR) for img in frames]
 
         if self.random_crop is not None:
+            # frames, (offset_h, offset_w, crop_h, crop_w) = self.random_crop(frames)
             _, (offset_h, offset_w, crop_h, crop_w) = self.random_crop(frames_resize)
         else:
             offset_h, offset_w, (crop_h, crop_w) = 0, 0, self.pre_resize_shape
@@ -163,9 +170,12 @@ class VideoFolder(torch.utils.data.Dataset):
         scale_crop_w, scale_crop_h = 224 / float(crop_w), 224 / float(crop_h)
 
         box_tensors = torch.zeros((self.num_frames, self.num_boxes, 4), dtype=torch.float32) # (cx, cy, w, h)
+        box_categories = torch.zeros((self.num_frames, self.num_boxes))
 
+        box_rgb = torch.zeros((self.num_frames*2, self.num_boxes, 3, self.size_h, self.size_w))
         for frame_index, frame_id in enumerate(coord_frame_list):
             frame_id = int(frame_id)
+            frame_rgb = frames[frame_index]
             try:
                 frame_data = video_data[frame_id]
             except:
@@ -177,6 +187,15 @@ class VideoFolder(torch.utils.data.Dataset):
 
                 box_coord = box_data['box2d']       # coord value
                 x0, y0, x1, y1 = box_coord['x1'], box_coord['y1'], box_coord['x2'], box_coord['y2']
+
+                # rgb_box_crop
+                crop_frame = frame_rgb.crop((x0, y0, x1, y1))
+                crop_img = crop_frame.resize((self.size_h, self.size_w), Image.BILINEAR)  # [H,W]
+                loader = transforms.ToTensor()
+                crop_img = loader(crop_img)  # [3, H, W] tensor
+
+                box_rgb[2 * frame_index, global_box_id] = crop_img.float()   # [T, V, D, H, W]
+                box_rgb[2 * frame_index+1, global_box_id] = crop_img.float()
 
                 # scaling due to initial resize
                 x0, x1 = x0 * scale_resize_w, x1 * scale_resize_w
@@ -205,13 +224,17 @@ class VideoFolder(torch.utils.data.Dataset):
 
                 box_tensors[frame_index, global_box_id] = torch.tensor(gt_box).float()
 
-        return box_tensors
+                box_categories[frame_index, global_box_id] = 1 if box_data['standard_category'] == 'hand' else 2
+
+                x0, y0, x1, y1 = list(map(int, [x0, y0, x1, y1]))
+
+        return box_rgb, box_tensors, box_categories, hand_id
 
     def __getitem__(self, index):
 
-        box_tensors = self.sample_single(index)
+        box_rgb, box_tensors, box_categories, hand_id= self.sample_single(index)
 
-        return box_tensors, self.labels[index]
+        return box_rgb, box_tensors, box_categories, hand_id, self.labels[index]
 
     def __len__(self):
         return len(self.json_data)

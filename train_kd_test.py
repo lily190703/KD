@@ -29,11 +29,9 @@ parser.add_argument('--root_frames', help='path to the folder with frames')
 parser.add_argument('--json_data_train', help='path to the json file with train video meta data')
 parser.add_argument('--json_data_val', help='path to the json file with validation video meta data')
 parser.add_argument('--json_file_labels', help='path to the json file with ground truth labels')
-parser.add_argument('--json_new_labels', help='path to the json file with verb and prep labels')
-parser.add_argument('--json_vp_labels', help='path to the json file with verb and prep labels')
-parser.add_argument('--json_longtail', help='path to the json file with long-tail classes')
 parser.add_argument('--tracked_boxes', help='choose tracked boxes')
 parser.add_argument('--save_path', type=str, help='frame and list save path')
+parser.add_argument('--model_path', help='path to pth model')
 
 parser.add_argument('--img_feature_dim', default=256, type=int, metavar='N',
                     help='intermediate feature dimension for image-based features')
@@ -232,9 +230,7 @@ if __name__ == '__main__':
     # use GPU if available
     args.cuda = torch.cuda.is_available()
 
-    model_path = '/root/data/sthv2/ACN-KD/ckpt/'
-    name = 'ck_p_10_e21_latest.pth.tar'
-    model_checkpoint = model_path + name
+    model_checkpoint = args.model_path
     assert os.path.isfile(model_checkpoint), "No checkpoint found at '{}'".format(model_checkpoint)
     print("=> loading checkpoint '{}'".format(model_checkpoint))
     checkpoint = torch.load(model_checkpoint)
